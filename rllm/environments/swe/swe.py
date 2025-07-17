@@ -51,7 +51,7 @@ class SWEEnv(BaseEnv):
         idx: int | None = None,
         step_timeout: int = 90,
         reward_timeout: int = 300,
-        backend: str = "kubernetes",
+        backend: str = "docker",
         delete_image: bool = False,
         verbose: bool = False,
         scaffold: str = "r2egym",
