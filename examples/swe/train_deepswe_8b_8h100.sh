@@ -14,7 +14,7 @@ python3 -m rllm.trainer.verl.train_agent_ppo \
     data.train_files=${RLLM_DIR}/rllm/data/datasets/micro_r2egym/train_verl.parquet \
     data.val_files=${RLLM_DIR}/rllm/data/datasets/SWE_Bench_Verified/test_verl.parquet \
     data.train_batch_size=8 \
-    data.val_batch_size=1 \
+    data.val_batch_size=512 \
     data.max_prompt_length=5120 \
     data.max_response_length=8096 \
     data.filter_overlong_prompts=True \
@@ -61,7 +61,7 @@ python3 -m rllm.trainer.verl.train_agent_ppo \
     trainer.n_gpus_per_node=8 \
     trainer.nnodes=1 \
     trainer.save_freq=10 \
-    trainer.test_freq=10 \
+    trainer.test_freq=100 \
     trainer.default_hdfs_dir=null \
     env.name=swe \
     agent.name=sweagent \
