@@ -19,19 +19,19 @@ classifiers = [
 license = {file = "LICENSE"}
 dependencies = [
     # Core ML/AI packages
-    "torch>=2.7",
+#    "torch>=2.7",
     "transformers",
     "accelerate",
-    "flash-attn>=2.8.0.post2",
+#   "flash-attn>=2.8.0.post2",
     "sentence-transformers",
     "torchmetrics",
 
     # Training and inference
     "deepspeed",
-    "vllm>=0.8.3",
-    "sgl-kernel>=0.2.0",
-    "sglang>=0.4.8.post1",
-    "sglang-router",
+#   "vllm>=0.8.3",
+#   "sgl-kernel>=0.2.0",
+#   "sglang>=0.4.8.post1",
+#   "sglang-router",
     "peft",
     "torchao",
 
