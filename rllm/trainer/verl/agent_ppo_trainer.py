@@ -167,6 +167,8 @@ class AgentPPOTrainer(RayPPOTrainer):
 
                 metrics = {}
                 timing_raw = {}
+                
+                logger.log(data={"batch/env_info": batch.non_tensor_batch["extra_info"].tolist()}, step=self.global_steps)
 
                 batch.pop(batch_keys=["input_ids", "attention_mask", "position_ids"])
                 batch.meta_info = {
