@@ -19,7 +19,6 @@ classifiers = [
 license = {file = "LICENSE"}
 dependencies = [
     # Core ML/AI packages
-    "torch>=2.7",
     "transformers",
     "accelerate",
     "flash-attn>=2.8.0.post2",
