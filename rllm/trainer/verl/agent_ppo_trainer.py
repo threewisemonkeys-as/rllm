@@ -97,16 +97,13 @@ class AgentPPOTrainer(RayPPOTrainer):
         """
         env_args = batch.non_tensor_batch["extra_info"].tolist()
 
-        full_agent_args = dict(self.config.agent.get("agent_args", {})) | self.agent_args
-        base_env_args = dict(self.config.env.get("env_args", {})) | self.env_args
-
         def _create_env(i):
             if isinstance(env_args[i], str):
                 env_args[i] = json.loads(env_args[i])
-            return i, self.env_class.from_dict({**env_args[i], **base_env_args})
+            return i, self.env_class.from_dict({**env_args[i], **self.config.env.get("env_args", {})})
 
         def _create_agent(i):
-            return i, self.agent_class(**full_agent_args)
+            return i, self.agent_class(**self.config.agent.get("agent_args", {}))
 
         # Create environments in parallel while preserving order
         envs = [None] * len(env_args)
@@ -459,6 +456,7 @@ class AgentPPOTrainer(RayPPOTrainer):
             rewards_lst.append(reward_tensor.sum(-1).cpu())
             data_source_lst.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
             uid_lst.append(test_batch.non_tensor_batch["uid"])
+            break
 
         reward_tensor = torch.cat(rewards_lst, dim=0)  # (batch_size,)
         data_sources = np.concatenate(data_source_lst, axis=0)

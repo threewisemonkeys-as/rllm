@@ -11,18 +11,17 @@
 
 <div align="center">
 
-[![Documentation](https://img.shields.io/badge/Documentation-black?style=for-the-badge&logo=googledocs&logoColor=white)](https://rllm-project.readthedocs.io/en/latest)
-[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/BDH46HT9en)
+[![rLLM](https://img.shields.io/badge/RLLM-000000?style=for-the-badge&logo=github&logoColor=000&logoColor=white)](https://github.com/agentica-project/rllm)
 [![Website](https://img.shields.io/badge/Site-%23000000.svg?style=for-the-badge&logo=semanticweb&logoColor=white)](https://www.agentica-project.com) 
-[![Twitter/X](https://img.shields.io/badge/Agentica-white?style=for-the-badge&logo=X&logoColor=000&color=000&labelColor=white)](https://x.com/Agentica_)
-[![Github](https://img.shields.io/badge/RLLM-000000?style=for-the-badge&logo=github&logoColor=000&logoColor=white)](https://github.com/agentica-project/rllm)
+[![Twitter](https://img.shields.io/badge/Agentica-white?style=for-the-badge&logo=X&logoColor=000&color=000&labelColor=white)](https://x.com/Agentica_)
 [![Hugging Face Collection](https://img.shields.io/badge/Agentica-fcd022?style=for-the-badge&logo=huggingface&logoColor=000&labelColor)](https://huggingface.co/agentica-org)
 
 </div>
 
 </div>
 
-rLLM is an open-source framework for post-training language agents via reinforcement learning. With rLLM, you can easily build your custom agents and environments, train them with reinforcement learning, and deploy them for real-world workloads. 
+rLLM is an open-source framework for post-training language agents via reinforcement learning. With rLLM, you can easily build their custom agents and environments, train them with reinforcement learning, and deploy them for real-world workloads. 
+
 
 
 ## Releases  📰
@@ -58,17 +57,24 @@ rLLM is an open-source framework for post-training language agents via reinforce
 ### Installation
 
 ```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # Clone the repository
 git clone --recurse-submodules https://github.com/agentica-project/rllm.git
 cd rllm
 
-# create a conda environment
-conda create -n rllm python=3.10
-conda activate rllm
+# Create virtual environment
+uv venv --python 3.10
+
+# Activate the virtual environment
+source .venv/bin/activate  # On Linux/macOS
+# or
+.venv\Scripts\activate  # On Windows
 
 # Install all dependencies
-pip install -e ./verl
-pip install -e .
+uv pip install -e ./verl
+uv pip install -e .
 ```
 
 

@@ -64,6 +64,7 @@ class SWEAgent(BaseAgent):
         self.format_model_response = format_model_response
         self.scaffold = scaffold
         assert scaffold in ["r2egym", "sweagent"], f"Invalid scaffold: {scaffold}, must be one of ['r2egym', 'sweagent']"
+
         self.system_prompt = SWE_SYSTEM_PROMPT_FN_CALL if use_fn_calling else SWE_SYSTEM_PROMPT
         if scaffold == "sweagent":
             self.system_prompt = SWEAGENT_SYSTEM_PROMPT
@@ -128,7 +129,8 @@ class SWEAgent(BaseAgent):
             prior_step.info = info
 
         self.messages.append({"role": "user", "content": observation})
-        self.cur_step = Step(observation=observation)
+        cur_step = Step(observation=observation)
+        self._trajectory.steps.append(cur_step)
 
     def update_from_model(self, response: str, **kwargs):
         """
@@ -143,7 +145,6 @@ class SWEAgent(BaseAgent):
         Returns:
             None
         """
-        self._trajectory.steps.append(self.cur_step)
         if self.use_fn_calling:
             thought, action = parse_oai_response(response)
         else:
