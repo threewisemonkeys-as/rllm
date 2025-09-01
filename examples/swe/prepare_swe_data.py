@@ -4,6 +4,8 @@ from rllm.data.dataset import DatasetRegistry
 
 SWE_DATASETS = [
     "R2E-Gym/R2E-Gym-Subset",
+    "tiny_r2egym",
+    "micro_r2egym",
     "R2E-Gym/R2E-Gym-Lite",
     "R2E-Gym/R2E-Gym-V1",
     "R2E-Gym/SWE-Bench-Lite",
@@ -34,6 +36,10 @@ def prepare_swe_data():
 
     for dataset_name in SWE_DATASETS:
         print(f"Processing dataset: {dataset_name}")
+        original_dataset_name = dataset_name
+        if dataset_name in ["tiny_r2egym", "micro_r2egym"]:
+            dataset_name = "R2E-Gym/R2E-Gym-Subset"  # Alias for tiny_r2egym
+
         try:
             # Load the dataset dictionary (which contains splits like 'train' or 'test')
             dataset_splits = load_dataset(dataset_name)
@@ -43,10 +49,22 @@ def prepare_swe_data():
 
         dataset_key = dataset_name.split("/")[-1].replace("-", "_")
 
+        if original_dataset_name == "tiny_r2egym":
+            dataset_key = "tiny_r2egym"
+        elif original_dataset_name == "micro_r2egym":
+            dataset_key = "micro_r2egym"
+
         # Process train split if it exists
         if "train" in dataset_splits:
             print(f"Processing 'train' split for {dataset_name}")
             train_data = [process_fn(row) for row in dataset_splits["train"]]
+
+            if original_dataset_name == "tiny_r2egym":
+                train_data = [dd for dd in train_data if dd["repo_name"] == "orange3"]
+            
+            if original_dataset_name == "micro_r2egym":
+                train_data = train_data[:50]
+
             train_dataset = DatasetRegistry.register_dataset(f"{dataset_key}", train_data, "train")
             train_datasets.append(train_dataset)
             print(f"Registered train dataset with {len(train_data)} examples")
@@ -55,6 +73,10 @@ def prepare_swe_data():
         if "test" in dataset_splits:
             print(f"Processing 'test' split for {dataset_name}")
             test_data = [process_fn(row) for row in dataset_splits["test"]]
+
+            if original_dataset_name in ["tiny_r2egym", "micro_r2egym"]:
+                test_data = test_data[:20]
+
             test_dataset = DatasetRegistry.register_dataset(f"{dataset_key}", test_data, "test")
             test_datasets.append(test_dataset)
             print(f"Registered test dataset with {len(test_data)} examples")
