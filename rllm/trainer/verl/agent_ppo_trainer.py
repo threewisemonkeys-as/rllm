@@ -14,6 +14,8 @@ import torch
 from omegaconf import OmegaConf
 
 from rllm.engine.agent_execution_engine import AsyncAgentExecutionEngine
+import os
+os.environ["VLLM_USE_V1"] = "1"
 from verl import DataProto
 from verl.protocol import pad_dataproto_to_divisor
 from verl.trainer.ppo.ray_trainer import (
