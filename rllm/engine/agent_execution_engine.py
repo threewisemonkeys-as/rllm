@@ -249,7 +249,17 @@ class AgentExecutionEngine:
 
         # Reset environment with the task using the executor
         loop = asyncio.get_event_loop()
-        observation, info = await loop.run_in_executor(self.executor, env.reset)
+        try:
+            observation, info = await loop.run_in_executor(self.executor, env.reset)
+        except asyncio.CancelledError:
+            logger.exception("Task cancelled while waiting for env.reset for trajectory %d. Trying to reset again...", idx)
+            try:
+                # Best-effort cleanup: try to close the environment in executor
+                await loop.run_in_executor(self.executor, env.reset)
+            except Exception:
+                logger.exception("Failed to close env after cancellation.")
+            # Re-raise to allow higher-level callers to react to cancellation
+            raise
         info["max_steps"] = self.max_steps
 
         # Reset agent
@@ -469,9 +479,18 @@ class AgentExecutionEngine:
             return steps_result
 
     async def run_agent_trajectory_with_retry(self, idx, application_id, seed=0, mode="Text", **kwargs):
+        # Increase the overall wait_for timeout and handle CancelledError explicitly.
+        overall_timeout = kwargs.get("overall_timeout", 28800)  # default to 8 hours
         for _ in range(self.retry_limit):
             try:
-                return await asyncio.wait_for(self.run_agent_trajectory_async(idx, application_id=application_id, seed=seed, mode=mode, **kwargs), timeout=7200)
+                return await asyncio.wait_for(
+                    self.run_agent_trajectory_async(idx, application_id=application_id, seed=seed, mode=mode, **kwargs),
+                    timeout=overall_timeout,
+                )
+            except asyncio.CancelledError:
+                # If our coroutine is cancelled, log and re-raise to avoid retry loops.
+                logger.exception("Trajectory %d cancelled via asyncio.CancelledError. Not retrying.", idx)
+                raise
             except Exception:
                 traceback.print_exc()
                 continue
