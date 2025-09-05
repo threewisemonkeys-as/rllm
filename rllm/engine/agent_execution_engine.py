@@ -253,6 +253,8 @@ class AgentExecutionEngine:
             observation, info = await loop.run_in_executor(self.executor, env.reset)
         except asyncio.CancelledError:
             logger.exception("Task cancelled while waiting for env.reset for trajectory %d. Trying to reset again...", idx)
+            observation = "Environment reset timed out"
+            info = {"status": "timeout", "reward": 0.0}
             try:
                 # Best-effort cleanup: try to close the environment in executor
                 await loop.run_in_executor(self.executor, env.reset)
@@ -260,6 +262,11 @@ class AgentExecutionEngine:
                 logger.exception("Failed to close env after cancellation.")
             # Re-raise to allow higher-level callers to react to cancellation
             raise
+        except Exception as e:
+            logger.error(f"Environment reset failed: {e}")
+            observation = f"Environment reset failed: {str(e)}"
+            info = {"status": "error", "reward": 0.0}
+        
         info["max_steps"] = self.max_steps
 
         # Reset agent
