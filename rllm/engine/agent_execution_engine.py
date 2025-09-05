@@ -328,6 +328,8 @@ class AgentExecutionEngine:
                 next_observation, reward, done, info = await asyncio.wait_for(loop.run_in_executor(self.executor, env.step, action), timeout=(self.trajectory_timeout - total_time))
             except asyncio.TimeoutError:
                 termination_reason = "ENV_TIMEOUT"
+                print(f"Environment: {env}")
+                print(f"Trajectory {idx} timed out during env.step after {total_time:.2f} seconds. Terminating trajectory.")
                 if step_idx == 0:
                     colorful_print(f"Warning: Trajectory {idx} completed due to: {termination_reason} before able to perform 1 complete action. This might cause unexpected behavior. Consider increasing trajectory timeout limit.\n", "red")
                 reward = 0
