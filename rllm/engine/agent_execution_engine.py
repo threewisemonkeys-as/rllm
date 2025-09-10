@@ -289,7 +289,20 @@ class AgentExecutionEngine:
             kwargs["max_tokens"] = max_tokens
 
             start_time = time.time()
-            response = await self.get_model_response(prompt_messages, application_id, **kwargs)
+            try: 
+                response = await asyncio.wait_for(self.get_model_response(prompt_messages, application_id, **kwargs), timeout=(self.trajectory_timeout - total_time))
+            except asyncio.TimeoutError:
+                termination_reason = "ENV_TIMEOUT"
+                print(f"Environment: {env}")
+                print(f"Trajectory {idx} timed out during env.step after {total_time:.2f} seconds. Terminating trajectory.")
+                if step_idx == 0:
+                    colorful_print(f"Warning: Trajectory {idx} completed due to: {termination_reason} before able to perform 1 complete action. This might cause unexpected behavior. Consider increasing trajectory timeout limit.\n", "red")
+                reward = 0
+
+                cur_step = agent.get_current_state()
+                done = True
+                cur_step.done = done
+                break
             delta_time = time.time() - start_time
             llm_time += delta_time
             total_time += delta_time
