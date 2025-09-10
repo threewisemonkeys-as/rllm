@@ -401,6 +401,10 @@ class AgentExecutionEngine:
             if step_idx == self.max_steps - 1:
                 termination_reason = "MAX_STEPS"
 
+            if step_idx == 0:
+                colorful_print(f"Successfully completed first action in pod: {env.env.runtime.container_name}", "purple")
+
+
         masked_out = False
         if self.overlong_filter:
             if termination_reason == "TRUNCATION" or termination_reason == "MAX_STEPS" or termination_reason == "TIMEOUT":
@@ -433,6 +437,8 @@ class AgentExecutionEngine:
         compute_trajectory_reward(trajectory)
         compute_mc_return(trajectory, gamma=self.gamma)
 
+        colorful_print(f"Done with pod: {env.env.runtime.container_name}", "purple")
+        
         if mode == "Text":
             return trajectory
         elif mode == "Token":
