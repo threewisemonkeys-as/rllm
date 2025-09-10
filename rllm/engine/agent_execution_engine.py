@@ -249,7 +249,18 @@ class AgentExecutionEngine:
 
         # Reset environment with the task using the executor
         loop = asyncio.get_event_loop()
-        observation, info = await loop.run_in_executor(self.executor, env.reset)
+        
+        try: 
+            observation, info = await asyncio.wait_for(loop.run_in_executor(self.executor, env.reset), timeout=self.trajectory_timeout)
+        except asyncio.TimeoutError:
+            print(f"Environment: {env}")
+            print(f"Trajectory {idx} timed out during env.reset after {total_time:.2f} seconds. Terminating trajectory. This was during the environment reset phase.")
+            termination_reason = "TIMEOUT"
+            cur_step = agent.get_current_state()
+            done = True
+            cur_step.done = done
+        
+        
         info["max_steps"] = self.max_steps
 
         # Reset agent
@@ -267,9 +278,18 @@ class AgentExecutionEngine:
         # Note, this should never happen!
         if prompt_token_len > self.max_prompt_length:
             agent.reset()
-            raise Exception(f"Trajectory {idx}: initial prompt length {prompt_token_len} already exceeded max_prompt_length {self.max_prompt_length}, retrying")
+            termination_reason = "PROMPT_TOO_LONG"
+            cur_step = agent.get_current_state()
+            done = True
+            cur_step.done = done
+            # raise Exception(f"Trajectory {idx}: initial prompt length {prompt_token_len} already exceeded max_prompt_length {self.max_prompt_length}, retrying")
 
         for step_idx in range(self.max_steps):
+            if termination_reason:
+                # If there was a termination reason, we need to handle it
+                colorful_print(f"Trajectory {idx} terminated due to: {termination_reason}")
+                break
+
             # Get action from agent
             prompt_messages = agent.chat_completions.copy()
             # Max remaining tokens left for the response
@@ -293,10 +313,10 @@ class AgentExecutionEngine:
                 response = await asyncio.wait_for(self.get_model_response(prompt_messages, application_id, **kwargs), timeout=(self.trajectory_timeout - total_time))
             except asyncio.TimeoutError:
                 termination_reason = "ENV_TIMEOUT"
-                print(f"Environment: {env}")
-                print(f"Trajectory {idx} timed out during env.step after {total_time:.2f} seconds. Terminating trajectory.")
+                colorful_print(f"Environment: {env}")
+                colorful_print(f"Trajectory {idx} timed out during env.step after {total_time:.2f} seconds. Terminating trajectory. This was after generating a vllm response.")
                 if step_idx == 0:
-                    colorful_print(f"Warning: Trajectory {idx} completed due to: {termination_reason} before able to perform 1 complete action. This might cause unexpected behavior. Consider increasing trajectory timeout limit.\n", "red")
+                    colorful_print(f"Warning: Trajectory {idx} completed due to: {termination_reason} before able to perform 1 complete action within the environment.\n", "red")
                 reward = 0
 
                 cur_step = agent.get_current_state()
@@ -424,7 +444,18 @@ class AgentExecutionEngine:
         if hasattr(env, "compute_final_reward") and not masked_out:
             cur_step = agent.get_current_state()
             start_time = time.time()
-            reward = await loop.run_in_executor(self.executor, env.compute_final_reward)
+            try:
+                next_observation, reward, done, info = await asyncio.wait_for(loop.run_in_executor(self.executor, env.compute_final_reward), timeout=300)
+            except asyncio.TimeoutError:
+                termination_reason = "REWARD_TIMEOUT"
+                if step_idx == 0:
+                    colorful_print(f"Warning: Trajectory {idx} completed due to: {termination_reason}. This might cause unexpected behavior. Consider increasing the reward timeout limit. \n", "red")
+                reward = 0
+
+                cur_step = agent.get_current_state()
+                done = True
+                cur_step.done = done
+
             reward_time = time.time() - start_time
             cur_step.reward = reward
         # Closing environment using the executor.
