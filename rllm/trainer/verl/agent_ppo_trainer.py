@@ -192,9 +192,11 @@ class AgentPPOTrainer(RayPPOTrainer):
                         batch = batch.union(final_gen_batch_output)
                         metrics.update(generate_metrics)
 
+                    print(f"Finished collecting and processing agent trajectories")
                     # compute values
                     if self.use_critic:
                         with _timer("values", timing_raw):
+                            print(f"Computing values")
                             values = self.critic_wg.compute_values(batch)
                             batch = batch.union(values)
 
@@ -313,10 +315,12 @@ class AgentPPOTrainer(RayPPOTrainer):
 
                         # recompute old_log_probs
                         with _timer("old_log_prob", timing_raw):
+                            print(f"Recomputing old log probs")
                             old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
                             batch = batch.union(old_log_prob)
 
                         if self.use_reference_policy:
+                            print(f"Computing reference log probs")
                             # compute reference log_prob
                             with _timer("ref", timing_raw):
                                 ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(batch)
@@ -356,6 +360,7 @@ class AgentPPOTrainer(RayPPOTrainer):
                                 raise ValueError(f"Stepwise advantage mode {self.config.agent.stepwise_advantage_mode} not supported")
 
                         # compute advantages, executed on the driver process
+                        print(f"Running compute_advantage function")
                         batch = compute_advantage(
                             batch,
                             adv_estimator=self.config.algorithm.adv_estimator,
@@ -372,6 +377,7 @@ class AgentPPOTrainer(RayPPOTrainer):
                             # batch = batch.merge(other_step_batch)
                             batch = DataProto.concat([batch, other_step_batch])
 
+                    print(f"Padding to world size")
                     batch = self._pad_dataproto_to_world_size(batch=batch)
                     # balance the number of valid tokens on each dp rank.
                     # Note that this breaks the order of data inside the batch.
@@ -383,6 +389,7 @@ class AgentPPOTrainer(RayPPOTrainer):
 
                     # update critic
                     if self.use_critic:
+                        print(f"Updating critic")
                         with _timer("update_critic", timing_raw):
                             critic_output = self.critic_wg.update_critic(batch)
                         critic_output_metrics = reduce_metrics(critic_output.meta_info["metrics"])
@@ -390,12 +397,14 @@ class AgentPPOTrainer(RayPPOTrainer):
 
                     # implement critic warmup
                     if self.config.trainer.critic_warmup <= self.global_steps:
+                        print(f"Updating actor")
                         # update actor
                         with _timer("update_actor", timing_raw):
                             actor_output = self.actor_rollout_wg.update_actor(batch)
                         actor_output_metrics = reduce_metrics(actor_output.meta_info["metrics"])
                         metrics.update(actor_output_metrics)
 
+                    print(f"Done with updates")
                     # validate
                     if self.val_reward_fn is not None and self.config.trainer.test_freq > 0 and self.global_steps % self.config.trainer.test_freq == 0:
                         with _timer("testing", timing_raw):
@@ -643,6 +652,7 @@ class AgentPPOTrainer(RayPPOTrainer):
             batch_first=True,
             padding_value=self.tokenizer.pad_token_id,
         )
+        print(f"After padding response batch shape: {response_batch.shape}")
 
         if self.config.data.max_train_response_length is not None:
             max_response_length = self.config.data.max_train_response_length
@@ -650,10 +660,16 @@ class AgentPPOTrainer(RayPPOTrainer):
             max_response_length = self.config.data.max_response_length
         response_batch = pad_sequence_to_length(response_batch, max_response_length, self.tokenizer.pad_token_id, left_pad=False)
 
+        print(f"After padding 2 response batch shape: {response_batch.shape}")
+        
         traj_mask = torch.nn.utils.rnn.pad_sequence(all_masks_list, batch_first=True, padding_value=0)
         traj_mask = pad_sequence_to_length(traj_mask, max_response_length, 0, left_pad=False)
 
+        print(f"After padding 2 traj mask shape: {traj_mask.shape}")
+
         trajectory_batch = torch.concat([prompts_batch, response_batch], dim=1)
+
+        print(f"Traj batch shape: {trajectory_batch.shape}")
 
         attention_mask = torch.where(trajectory_batch != self.tokenizer.pad_token_id, 1, 0)
 
@@ -671,6 +687,8 @@ class AgentPPOTrainer(RayPPOTrainer):
             if last_valid_idx >= 0 and last_valid_idx < score_batch.shape[1]:
                 score_batch[i, last_valid_idx] = traj_score
 
+        print(f"Score batch shape: {score_batch.shape}")
+        print(f"Attention mask shape: {attention_mask.shape}")
         tensor_batch = {
             "input_ids": trajectory_batch,
             "attention_mask": attention_mask,
@@ -797,6 +815,8 @@ class AgentPPOTrainer(RayPPOTrainer):
             yield item
 
     def _transform_agent_steps(self, steps: list[dict], uids: np.ndarray):
+        print(f"Calling _transform_agent_steps")
+        
         from verl.utils.torch_functional import pad_sequence_to_length
 
         all_prompts_list = []
@@ -954,26 +974,35 @@ class AgentPPOTrainer(RayPPOTrainer):
     def _pad_dataproto_to_world_size(self, batch):
         world_sizes = []
         if self.use_critic and self.critic_wg.world_size != 0:
+            print(f"self.critic_wg.world_size={self.critic_wg.world_size}")
             world_sizes.append(self.critic_wg.world_size)
         if self.use_reference_policy and self.ref_policy_wg.world_size != 0:
+            print(f"self.ref_policy_wg.world_size={self.ref_policy_wg.world_size}")
             world_sizes.append(self.ref_policy_wg.world_size)
         if self.use_rm and self.rm_wg.world_size != 0:
+            print(f"self.rm_wg.world_size={self.rm_wg.world_size}")
             world_sizes.append(self.rm_wg.world_size)
         if self.hybrid_engine:
             if self.actor_rollout_wg.world_size != 0:
+                print(f"self.actor_rollout_wg.world_size={self.actor_rollout_wg.world_size}")
                 world_sizes.append(self.actor_rollout_wg.world_size)
         else:
             if self.actor_wg.world_size != 0:
+                print(f"self.actor_wg.world_size={self.actor_wg.world_size}")
                 world_sizes.append(self.actor_wg.world_size)
             if self.rollout_wg.world_size != 0:
+                print(f"self.rollout_wg.world_size={self.rollout_wg.world_size}")
                 world_sizes.append(self.rollout_wg.world_size)
         if not world_sizes:
             return batch
 
+        print(f"world_sizes={world_sizes}")
         world_size = reduce(math.lcm, world_sizes)
 
         original_batch_size = batch.batch["prompts"].shape[0]
         batch, pad_size = pad_dataproto_to_divisor(batch, world_size)
+        print(f"original_batch_size={original_batch_size}")
+        print(f"pad_size={pad_size}")
 
         # for the padded dataproto, make the traj mask to 0. is_last_step also False
         for i in range(pad_size):
