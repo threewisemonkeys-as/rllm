@@ -586,11 +586,18 @@ class AgentPPOTrainer(RayPPOTrainer):
         for traj in trajectories:
             prompt_tokens = traj["prompt_tokens"]
             response_tokens = traj["response_tokens"]
+            response_masks = traj["response_masks"]
+
+            # truncate response if max_train_response_length is set
+            if self.config.data.max_train_response_length is not None:
+                response_tokens = response_tokens[:self.config.data.max_train_response_length]
+                response_masks = response_masks[:self.config.data.max_train_response_length]
+
             # test if trajectory is empty
             assert prompt_tokens.numel() != 0 and response_tokens.numel() != 0, f"Both prompt {prompt_tokens.numel()} and response {response_tokens.numel()} of trajectory shouldn't be empty. Please check make sure environment is working and the config"
             all_initial_tokens_list.append(prompt_tokens)
             all_response_tokens_list.append(response_tokens)
-            all_masks_list.append(traj["response_masks"])
+            all_masks_list.append(response_masks)
             traj_scores.append(traj["trajectory_reward"])
             chat_completions.append(traj["chat_completions"])
             traj_metrics.append(traj["metrics"])
@@ -634,11 +641,11 @@ class AgentPPOTrainer(RayPPOTrainer):
             padding_value=self.tokenizer.pad_token_id,
         )
 
-        max_response_length = self.config.data.max_response_length
-        response_batch = pad_sequence_to_length(response_batch, max_response_length, self.tokenizer.pad_token_id, left_pad=False)
+        max_train_response_length = self.config.data.max_train_response_length
+        response_batch = pad_sequence_to_length(response_batch, max_train_response_length, self.tokenizer.pad_token_id, left_pad=False)
 
         traj_mask = torch.nn.utils.rnn.pad_sequence(all_masks_list, batch_first=True, padding_value=0)
-        traj_mask = pad_sequence_to_length(traj_mask, max_response_length, 0, left_pad=False)
+        traj_mask = pad_sequence_to_length(traj_mask, max_train_response_length, 0, left_pad=False)
 
         trajectory_batch = torch.concat([prompts_batch, response_batch], dim=1)
 
