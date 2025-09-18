@@ -641,11 +641,14 @@ class AgentPPOTrainer(RayPPOTrainer):
             padding_value=self.tokenizer.pad_token_id,
         )
 
-        max_train_response_length = self.config.data.max_train_response_length
-        response_batch = pad_sequence_to_length(response_batch, max_train_response_length, self.tokenizer.pad_token_id, left_pad=False)
+        if self.config.data.max_train_response_length is not None:
+            max_response_length = self.config.data.max_train_response_length
+        else:
+            max_train_response_length = self.config.data.max_response_length
+        response_batch = pad_sequence_to_length(response_batch, max_response_length, self.tokenizer.pad_token_id, left_pad=False)
 
         traj_mask = torch.nn.utils.rnn.pad_sequence(all_masks_list, batch_first=True, padding_value=0)
-        traj_mask = pad_sequence_to_length(traj_mask, max_train_response_length, 0, left_pad=False)
+        traj_mask = pad_sequence_to_length(traj_mask, max_response_length, 0, left_pad=False)
 
         trajectory_batch = torch.concat([prompts_batch, response_batch], dim=1)
 
