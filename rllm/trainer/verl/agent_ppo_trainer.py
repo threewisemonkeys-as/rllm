@@ -199,6 +199,7 @@ class AgentPPOTrainer(RayPPOTrainer):
                             batch = batch.union(values)
 
                     with _timer("adv", timing_raw):
+                        print(f"Computing advantage")
                         # compute scores using reward model and/or reward function
                         if self.use_rm:
                             reward_tensor = self.rm_wg.compute_rm_score(batch)
@@ -531,6 +532,7 @@ class AgentPPOTrainer(RayPPOTrainer):
 
         with _timer("transform_trajectory", timing_raw):
             # Transform the raw trajectories into DataProto format.
+            print("Transforming trajectories")
             final_gen_batch_output, metrics = self._transform_agent_trajectories(trajectories)
         return final_gen_batch_output, metrics
 
@@ -590,6 +592,7 @@ class AgentPPOTrainer(RayPPOTrainer):
 
             # truncate response if max_train_response_length is set
             if self.config.data.max_train_response_length is not None:
+                print(f"Truncating response to to max_train_response_length = {max_train_response_length}")
                 response_tokens = response_tokens[:self.config.data.max_train_response_length]
                 response_masks = response_masks[:self.config.data.max_train_response_length]
 
@@ -644,7 +647,7 @@ class AgentPPOTrainer(RayPPOTrainer):
         if self.config.data.max_train_response_length is not None:
             max_response_length = self.config.data.max_train_response_length
         else:
-            max_train_response_length = self.config.data.max_response_length
+            max_response_length = self.config.data.max_response_length
         response_batch = pad_sequence_to_length(response_batch, max_response_length, self.tokenizer.pad_token_id, left_pad=False)
 
         traj_mask = torch.nn.utils.rnn.pad_sequence(all_masks_list, batch_first=True, padding_value=0)
