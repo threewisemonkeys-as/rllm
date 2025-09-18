@@ -592,7 +592,7 @@ class AgentPPOTrainer(RayPPOTrainer):
 
             # truncate response if max_train_response_length is set
             if self.config.data.max_train_response_length is not None:
-                print(f"Truncating response to to max_train_response_length = {max_train_response_length}")
+                print(f"Truncating response to to max_train_response_length = {self.config.data.max_train_response_length}")
                 response_tokens = response_tokens[:self.config.data.max_train_response_length]
                 response_masks = response_masks[:self.config.data.max_train_response_length]
 
