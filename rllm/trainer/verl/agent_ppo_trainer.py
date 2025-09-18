@@ -315,7 +315,7 @@ class AgentPPOTrainer(RayPPOTrainer):
 
                         # recompute old_log_probs
                         with _timer("old_log_prob", timing_raw):
-                            print(f"Recomputing old log probs")
+                            print(f"Recomputing old log probs with: {self.actor_rollout_wg}")
                             old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
                             batch = batch.union(old_log_prob)
 
