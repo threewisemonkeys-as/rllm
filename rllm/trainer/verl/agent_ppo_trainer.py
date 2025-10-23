@@ -468,7 +468,6 @@ class AgentPPOTrainer(RayPPOTrainer):
             rewards_lst.append(reward_tensor.sum(-1).cpu())
             data_source_lst.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
             uid_lst.append(test_batch.non_tensor_batch["uid"])
-            break
 
         reward_tensor = torch.cat(rewards_lst, dim=0)  # (batch_size,)
         data_sources = np.concatenate(data_source_lst, axis=0)
