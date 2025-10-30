@@ -13,7 +13,7 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 
-from rllm.engine.agent_execution_engine import AsyncAgentExecutionEngine
+from rllm.agent_execution_engine import AsyncAgentExecutionEngine
 import os
 os.environ["VLLM_USE_V1"] = "1"
 from verl import DataProto
@@ -712,7 +712,7 @@ class AgentPPOTrainer(RayPPOTrainer):
             sample_idx: Starting index of samples to visualize
             max_samples: Maximum number of samples to visualize
         """
-        from rllm.misc import colorful_print
+        from rllm.utils import colorful_print
 
         # Get the relevant tensors
         prompts = tensor_batch.batch["prompts"]

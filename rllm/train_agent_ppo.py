@@ -18,12 +18,12 @@ def safe_import(module_path, class_name):
 
 # Import environment classes
 ENV_CLASSES = {
-    "swe": safe_import("rllm.environments.swe.swe", "SWEEnv"),
+    "swe": safe_import("rllm.env", "SWEEnv"),
 }
 
 # Import agent classes
 AGENT_CLASSES = {
-    "sweagent": safe_import("rllm.agents.swe_agent", "SWEAgent"),
+    "sweagent": safe_import("rllm.agent", "SWEAgent"),
 }
 
 # Filter out None values for unavailable imports
@@ -32,7 +32,7 @@ AGENT_CLASS_MAPPING = {k: v for k, v in AGENT_CLASSES.items() if v is not None}
 
 
 # Local application imports
-from rllm.trainer.verl.agent_ppo_trainer import AgentPPOTrainer
+from rllm.agent_ppo_trainer import AgentPPOTrainer
 from verl.trainer.ppo.reward import load_reward_manager
 
 
