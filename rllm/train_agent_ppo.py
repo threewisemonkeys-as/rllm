@@ -1044,7 +1044,6 @@ AGENT_CLASS_MAPPING = {k: v for k, v in AGENT_CLASSES.items() if v is not None}
 
 
 # Local application imports
-from rllm.agent_ppo_trainer import AgentPPOTrainer
 from verl.trainer.ppo.reward import load_reward_manager
 
 
