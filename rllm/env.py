@@ -221,7 +221,6 @@ class SWEEnv(BaseEnv):
 
         # RepoEnv always returns 0 reward, must be evaluated by DockerRuntime.
         obs, reward, done, info = self.env.step(action_obj)
-        breakpoint()
         # if done:
         #     reward = self.env.compute_reward()
 
