@@ -489,12 +489,11 @@ class AgentExecutionEngine:
 
     async def run_agent_trajectory_with_retry(self, idx, application_id, seed=0, mode="Text", **kwargs):
         # Increase the overall wait_for timeout and handle CancelledError explicitly.
-        overall_timeout = kwargs.get("overall_timeout", 28800)  # default to 8 hours
         for _ in range(self.retry_limit):
             try:
                 return await asyncio.wait_for(
                     self.run_agent_trajectory_async(idx, application_id=application_id, seed=seed, mode=mode, **kwargs),
-                    timeout=overall_timeout,
+                    timeout=5400,
                 )
             except asyncio.CancelledError:
                 # If our coroutine is cancelled, log and re-raise to avoid retry loops.
