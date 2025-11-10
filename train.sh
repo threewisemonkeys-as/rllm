@@ -4,11 +4,14 @@ set -x
 
 usage () {
   echo "Usage: $0 -m MODEL -d DATASET -b TRAIN_BS -r ROLLOUTS \
--n NODES -g GPUS_PER_NODE [-t TP] [-u USP] DATA_DIR LOG_DIR" >&2
+-n NODES -g GPUS_PER_NODE [-t TP] [-u USP] [-V VAL_BEFORE_TRAIN] DATA_DIR LOG_DIR" >&2
   exit 1
 }
 
-while getopts "m:d:b:r:n:g:t:u:" opt; do
+# default: run validation before training
+VAL_BEFORE_TRAIN=1
+
+while getopts "m:d:b:r:n:g:t:u:V:" opt; do
   case "$opt" in
     m) MODEL=$OPTARG ;;
     d) DATASET=$OPTARG ;;
@@ -18,6 +21,7 @@ while getopts "m:d:b:r:n:g:t:u:" opt; do
     g) GPUS_PER_NODE=$OPTARG ;;
     t) TP=$OPTARG ;;
     u) USP=$OPTARG ;;
+    V) VAL_BEFORE_TRAIN=$OPTARG ;;
     *) usage ;;
   esac
 done
@@ -43,19 +47,15 @@ export VLLM_USE_V1=1
 export VLLM_ALLOW_LONG_MAX_MODEL_LEN=1
 export VLLM_ENGINE_ITERATION_TIMEOUT_S=100000000000
 
-
-# Start Ray cluster manually
-ray_init_timeout=300  # Default timeout for Ray initialization in seconds.
-ray_port=6379  # Port used by the Ray head node.
+ray_init_timeout=300
+ray_port=6379
 HEAD_NODE_ADDRESS="${MASTER_ADDR}:${ray_port}"
 NODE_RANK="${NODE_RANK:-${RANK:-0}}"
 
 if [ "$NODE_RANK" -eq 0 ]; then
-  # Head node
   ray start --head --port=${ray_port}
   ray status
 
-  # Poll Ray until every worker node is active.
   for (( i=0; i < $ray_init_timeout; i+=5 )); do
       active_nodes=`python3 -c 'import ray; ray.init(); print(sum(node["Alive"] for node in ray.nodes()))'`
       if [ $active_nodes -eq $NODES ]; then
@@ -65,7 +65,6 @@ if [ "$NODE_RANK" -eq 0 ]; then
       echo "Wait for all ray workers to be active. $active_nodes/$NODES is active"
       sleep 5s;
   done
-
 
   MODEL_NAME=$(echo "${MODEL}" | tr '/.' '__')
   EXPERIMENT_NAME="${MODEL_NAME}_${DATASET}_bs${TRAIN_BS}_r${ROLLOUTS}"
@@ -121,7 +120,7 @@ if [ "$NODE_RANK" -eq 0 ]; then
     trainer.logger=['console','wandb'] \
     trainer.project_name='cai_rl' \
     trainer.experiment_name=${EXPERIMENT_NAME} \
-    trainer.val_before_train=True \
+    trainer.val_before_train=${VAL_BEFORE_TRAIN} \
     trainer.n_gpus_per_node=${GPUS_PER_NODE} \
     trainer.nnodes=${NODES} \
     trainer.save_freq=5 \
@@ -137,9 +136,7 @@ if [ "$NODE_RANK" -eq 0 ]; then
     trainer.total_epochs=1000
 
 else
-  # Worker node - retry until connection succeeds or timeout expires
   for (( i=0; i < $ray_init_timeout; i+=5 )); do
-
     MASTER_IP=""
     for (( i=0; i < 60; i++ )); do
       MASTER_IP=$(python3 -c "import socket; print(socket.gethostbyname('$MASTER_ADDR'))" 2>/dev/null || true)
